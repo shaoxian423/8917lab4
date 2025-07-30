@@ -1,13 +1,17 @@
-import azure.functions as func
 import logging
+import azure.functions as func
 import json
-from typing import List
 
-def main(events: List[func.EventHubEvent]):
-    for event in events:
-        try:
-            raw_data = json.loads(event.get_body().decode('utf-8'))
-            trip_data = raw_data.get("ContentData")
+def main(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        input_data = req.get_json()
+        # 支持单条或多条数据
+        trips = input_data if isinstance(input_data, list) else [input_data]
+
+        results = []
+
+        for raw_data in trips:
+            trip_data = raw_data.get("ContentData", {})
             if not isinstance(trip_data, dict):
                 logging.warning("❌ ContentData must be a JSON object")
                 continue
@@ -29,5 +33,22 @@ def main(events: List[func.EventHubEvent]):
 
             logging.info(f"✅ Trip analyzed for vendor {vendor}: {insights or 'Trip normal'}")
 
-        except Exception as e:
-            logging.error(f"❌ Failed to process event: {e}")
+            results.append({
+                "vendorID": vendor,
+                "tripDistance": distance,
+                "passengerCount": passenger_count,
+                "paymentType": payment,
+                "insights": insights,
+                "isInteresting": bool(insights),
+                "summary": f"{len(insights)} flags: {', '.join(insights)}" if insights else "Trip normal"
+            })
+
+        return func.HttpResponse(
+            json.dumps(results),
+            status_code=200,
+            mimetype="application/json"
+        )
+
+    except Exception as e:
+        logging.error(f"❌ Failed to process request: {e}")
+        return func.HttpResponse(f"Error: {str(e)}", status_code=400)

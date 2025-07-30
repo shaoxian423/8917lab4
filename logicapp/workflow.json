@@ -1,0 +1,208 @@
+{
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "type": "Object",
+          "defaultValue": {}
+        }
+      },
+      "triggers": {
+        "When_events_are_available_in_Event_Hub": {
+          "type": "ApiConnection",
+          "inputs": {
+            "host": {
+              "connection": {
+                "name": "@parameters('$connections')['eventhubs']['connectionId']"
+              }
+            },
+            "method": "get",
+            "path": "/@{encodeURIComponent('taximessagehub')}/events/batch/head",
+            "queries": {
+              "contentType": "application/json",
+              "consumerGroupName": "$Default",
+              "maximumEventsCount": 10
+            },
+            "recurrence": {
+              "frequency": "Minute",
+              "interval": 1
+            }
+          }
+        }
+      },
+      "actions": {
+        "cst8917-lab4-analyze_trip": {
+          "type": "Function",
+          "inputs": {
+            "body": "@triggerBody()",
+            "method": "POST",
+            "function": {
+              "id": "/subscriptions/127e7a44-d802-42e4-b654-a434382666ac/resourceGroups/cst8917-lab4/providers/Microsoft.Web/sites/cst8917-lab4-function/functions/analyze_trip"
+            }
+          },
+          "runAfter": {}
+        },
+        "For_each": {
+          "type": "Foreach",
+          "foreach": "@body('cst8917-lab4-analyze_trip')",
+          "runAfter": {
+            "cst8917-lab4-analyze_trip": [
+              "Succeeded"
+            ]
+          },
+          "actions": {
+            "Condition": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@items('For_each')['isInteresting']",
+                      true
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "Condition_1": {
+                  "type": "If",
+                  "expression": {
+                    "and": [
+                      {
+                        "contains": [
+                          "@items('For_each')['insights']",
+                          "SuspiciousVendorActivity"
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Post_cards_for_sus": {
+                      "type": "ApiConnection",
+                      "inputs": {
+                        "body": {
+                          "type": "AdaptiveCard",
+                          "body": [
+                            {
+                              "type": "TextBlock",
+                              "text": "⚠️ Suspicious Vendor Activity Detected",
+                              "weight": "Bolder",
+                              "size": "Large",
+                              "color": "Attention"
+                            },
+                            {
+                              "type": "FactSet",
+                              "facts": [
+                                { "title": "Vendor", "value": "@items('For_each')['vendorID']" },
+                                { "title": "Distance (mi)", "value": "@items('For_each')['tripDistance']" },
+                                { "title": "Passengers", "value": "@items('For_each')['passengerCount']" },
+                                { "title": "Payment", "value": "@items('For_each')['paymentType']" },
+                                { "title": "Insights", "value": "@join(items('For_each')['insights'], ', ')" }
+                              ]
+                            }
+                          ],
+                          "actions": [],
+                          "version": "1.2"
+                        },
+                        "host": {
+                          "connection": {
+                            "name": "@parameters('$connections')['teams']['connectionId']"
+                          }
+                        },
+                        "method": "post",
+                        "path": "/webhookb2/583a5d97-d89e-4f74-9f38-e1d632823738@ec1bd924-0a6a-4aa9-aa89-c980316c0449/IncomingWebhook/d231aa08f59c4ebea2d98805bb5198c4/68c796f7-9960-4803-a5e5-8209caad782e"
+                      },
+                      "runAfter": {}
+                    }
+                  },
+                  "else": {
+                    "actions": {
+                      "Post_cards_for_interesting": {
+                        "type": "ApiConnection",
+                        "inputs": {
+                          "body": {
+                            "type": "AdaptiveCard",
+                            "body": [
+                              {
+                                "type": "TextBlock",
+                                "text": "🚨 Interesting Trip Detected",
+                                "weight": "Bolder",
+                                "size": "Large",
+                                "color": "Attention"
+                              },
+                              {
+                                "type": "FactSet",
+                                "facts": [
+                                  { "title": "Vendor", "value": "@items('For_each')['vendorID']" },
+                                  { "title": "Distance (mi)", "value": "@items('For_each')['tripDistance']" },
+                                  { "title": "Passengers", "value": "@items('For_each')['passengerCount']" },
+                                  { "title": "Payment", "value": "@items('For_each')['paymentType']" },
+                                  { "title": "Insights", "value": "@join(items('For_each')['insights'], ', ')" }
+                                ]
+                              }
+                            ],
+                            "actions": [],
+                            "version": "1.2"
+                          },
+                          "host": {
+                            "connection": {
+                              "name": "@parameters('$connections')['teams']['connectionId']"
+                            }
+                          },
+                          "method": "post",
+                          "path": "/webhookb2/583a5d97-d89e-4f74-9f38-e1d632823738@ec1bd924-0a6a-4aa9-aa89-c980316c0449/IncomingWebhook/d231aa08f59c4ebea2d98805bb5198c4/68c796f7-9960-4803-a5e5-8209caad782e"
+                        },
+                        "runAfter": {}
+                      }
+                    }
+                  }
+                }
+              },
+              "else": {
+                "actions": {
+                  "Post_card_for_no-instesting": {
+                    "type": "ApiConnection",
+                    "inputs": {
+                      "body": {
+                        "type": "AdaptiveCard",
+                        "body": [
+                          {
+                            "type": "TextBlock",
+                            "text": "✅ Trip Analyzed - No Issues",
+                            "weight": "Bolder",
+                            "size": "Large",
+                            "color": "Good"
+                          },
+                          {
+                            "type": "FactSet",
+                            "facts": [
+                              { "title": "Vendor", "value": "@items('For_each')['vendorID']" },
+                              { "title": "Distance (mi)", "value": "@items('For_each')['tripDistance']" },
+                              { "title": "Passengers", "value": "@items('For_each')['passengerCount']" },
+                              { "title": "Payment", "value": "@items('For_each')['paymentType']" },
+                              { "title": "Summary", "value": "@items('For_each')['summary']" }
+                            ]
+                          }
+                        ],
+                        "actions": [],
+                        "version": "1.2"
+                      },
+                      "host": {
+                        "connection": {
+                          "name": "@parameters('$connections')['teams']['connectionId']"
+                        }
+                      },
+                      "method": "post",
+                      "path": "/webhookb2/583a5d97-d89e-4f74-9f38-e1d632823738@ec1bd924-0a6a-4aa9-aa89-c980316c0449/IncomingWebhook/d231aa08f59c4ebea2d98805bb5198c4/68c796f7-9960-4803-a5e5-8209caad782e"
+                    },
+                    "runAfter": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+}

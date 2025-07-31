@@ -1,27 +1,34 @@
-import logging
 import azure.functions as func
+import logging
 import json
 
-def main(req: func.HttpRequest) -> func.HttpResponse:
+app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
+
+@app.route(route="")
+def analyze_trip(req: func.HttpRequest) -> func.HttpResponse:
     try:
         input_data = req.get_json()
-        # 支持单条或多条数据
-        trips = input_data if isinstance(input_data, list) else [input_data]
+        input_data = input_data.get("ContentData", {})  # ✅ Extract inner trip data
 
+        print("raw data:", input_data)
+        print(type(input_data))
+        if type(input_data) is list:
+            trips = input_data
+        else:
+            trips = [input_data]
+        print("trips:",trips)
         results = []
 
-        for raw_data in trips:
-            trip_data = raw_data.get("ContentData", {})
-            if not isinstance(trip_data, dict):
-                logging.warning("❌ ContentData must be a JSON object")
-                continue
+        for trip in trips:
 
-            vendor = trip_data.get("vendorID")
-            distance = float(trip_data.get("tripDistance", 0))
-            passenger_count = int(trip_data.get("passengerCount", 0))
-            payment = str(trip_data.get("paymentType", ""))
+            vendor = trip.get("vendorID")
+            distance = float(trip.get("tripDistance", 0))
+            passenger_count = int(trip.get("passengerCount", 0))
+            payment = str(trip.get("paymentType"))  # Cast to string to match logic
+            
 
             insights = []
+
             if distance > 10:
                 insights.append("LongTrip")
             if passenger_count > 4:
@@ -30,8 +37,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 insights.append("CashPayment")
             if payment == "2" and distance < 1:
                 insights.append("SuspiciousVendorActivity")
-
-            logging.info(f"✅ Trip analyzed for vendor {vendor}: {insights or 'Trip normal'}")
 
             results.append({
                 "vendorID": vendor,
@@ -44,11 +49,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             })
 
         return func.HttpResponse(
-            json.dumps(results),
+            body=json.dumps(results),
             status_code=200,
             mimetype="application/json"
         )
 
     except Exception as e:
-        logging.error(f"❌ Failed to process request: {e}")
+        logging.error(f"Error processing trip data: {e}")
         return func.HttpResponse(f"Error: {str(e)}", status_code=400)

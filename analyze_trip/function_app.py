@@ -8,24 +8,17 @@ app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 def analyze_trip(req: func.HttpRequest) -> func.HttpResponse:
     try:
         input_data = req.get_json()
-        input_data = input_data.get("ContentData", {})  # ✅ Extract inner trip data
+        trips = input_data if isinstance(input_data, list) else [input_data]
 
-        print("raw data:", input_data)
-        print(type(input_data))
-        if type(input_data) is list:
-            trips = input_data
-        else:
-            trips = [input_data]
-        print("trips:",trips)
         results = []
 
-        for trip in trips:
+        for record in trips:
+            trip = record.get("ContentData", {})  # ✅ Extract inner trip data
 
             vendor = trip.get("vendorID")
             distance = float(trip.get("tripDistance", 0))
             passenger_count = int(trip.get("passengerCount", 0))
             payment = str(trip.get("paymentType"))  # Cast to string to match logic
-            
 
             insights = []
 

@@ -1,35 +1,40 @@
-# CST8917 Lab 4: Real-Time Trip Event Analysis
+# 🚕 CST8917 Lab 4: Real-Time Trip Event Analysis
 
-## Overview
-This project implements a real-time trip event analysis system for a taxi dispatch network, designed to monitor trip data and flag anomalies such as long trips, group rides, cash payments, or suspicious vendor activity. The system leverages Azure services to ingest, process, and alert operations staff via Microsoft Teams.
+## 📌 Overview
 
-## Architecture
-The system follows an event-driven architecture:
-- **Event Hub**: `taxi-services-lab4` Namespace with `taximessagehub` ingests trip events in real-time.
+This project implements a real-time **trip event analysis system** for a city-wide taxi dispatch network. It uses **Azure Event Hub**, **Azure Functions**, **Logic Apps**, and **Microsoft Teams** to detect and notify operations staff of trips with unusual patterns — such as long trips, group rides, cash payments, or suspicious short-distance activity.
 
-- **Azure Function**: `cst8917-lab4-function` / `analyze_trip` processes each event, analyzing patterns and generating insights.
-![alt text](image.png)
-get analyze_trip's functions URL :
-![alt text](image-1.png)
-curl -X POST -H "Content-Type: application/json" -d '[{"ContentData": {"vendorID": "1", "tripDistance": 12.5, "passengerCount": 5, "paymentType": "2"}}]' https://cst8917-lab4-function-g7fph8fzb3bsatb2.canadacentral-01.azurewebsites.net/api/analyze_trip
-[{"vendorID": "1", "tripDistance": 12.5, "passengerCount": 5, "paymentType": "2", "insights": ["LongTrip", "GroupRide", "CashPayment"], "isInteresting": true, "summary": "3 flags: LongTrip, GroupRide, CashPayment"}]% 
-![alt text](image-2.png)
-Success ：Indicates that the analyze_trip function has been successfully deployed and is running correctly, with the logic (long-distance trips, group rides, and cash payment detection) functioning as expected.
-- **Logic App**: `cst8917-lab4-logicapp` orchestrates the workflow, triggering on events, calling the Function, and routing results to Teams.
-- **Microsoft Teams**: Receives Adaptive Cards for normal trips, interesting trips, or suspicious activities.
 
-## Function Logic
-The `analyze_trip` Azure Function analyzes trip data with the following rules:
-- **LongTrip**: Triggered if `tripDistance` > 10 miles.
-- **GroupRide**: Triggered if `passengerCount` > 4.
-- **CashPayment**: Triggered if `paymentType` = "2" (cash).
-- **SuspiciousVendorActivity**: Triggered if `paymentType` = "2" and `tripDistance` < 1 mile.
+## 🧱 Architecture
 
-The function returns a JSON response with:
-- `vendorID`, `tripDistance`, `passengerCount`, `paymentType`.
-- `insights`: List of detected flags.
-- `isInteresting`: Boolean indicating if any flags are present.
-- `summary`: Text summary of flags or "Trip normal".
+The system follows an **event-driven cloud architecture**:
+
+```
+Trip Event (JSON)
+        ↓
+Azure Event Hub (taximessagehub)
+        ↓
+Azure Function (analyze_trip)
+        ↓
+Azure Logic App (orchestrates logic)
+        ↓
+Microsoft Teams (Adaptive Cards notifications)
+```
+
+![Architecture Diagram](image.png)
+
+---
+
+## 🧪 Function Logic
+
+The `analyze_trip` Azure Function processes incoming trip data and flags patterns:
+
+| Insight                  | Rule                                                           |
+|--------------------------|----------------------------------------------------------------|
+| `LongTrip`               | `tripDistance > 10`                                            |
+| `GroupRide`              | `passengerCount > 4`                                           |
+| `CashPayment`            | `paymentType == "2"`                                           |
+| `SuspiciousVendorActivity` | `paymentType == "2"` **and** `tripDistance < 1`              |
 
 ## Example Input/Output
 ### Input
@@ -52,5 +57,58 @@ The function returns a JSON response with:
     }
   }
 ]
+```
+![alt text](image-3.png)
 
-by Shaoxian Duan
+---
+
+## ⚙️ System Components
+
+### 1. Event Hub
+- **Namespace**: `taxi-services-lab4`
+- **Hub Name**: `taximessagehub`
+- Receives simulated trip event data in JSON format.
+
+### 2. Azure Function: `analyze_trip`
+- Triggered via HTTP (used by Logic App)
+- Endpoint:  
+  ```
+  POST https://<your-function-app>.azurewebsites.net/api/
+  ```
+- Sample `curl`:
+  ```bash
+  curl -X POST -H "Content-Type: application/json" -d '[
+    {
+      "ContentData": {
+        "vendorID": "1",
+        "tripDistance": 12.5,
+        "passengerCount": 5,
+        "paymentType": "2"
+      }
+    }
+  ]' 
+  ```
+
+### 3. Logic App
+- Triggers on new Event Hub messages
+- Calls `analyze_trip` Azure Function
+- Uses `For each` loop to handle responses
+- Posts appropriate Adaptive Cards to Teams
+![alt text](image-5.png)
+### 4. Microsoft Teams (Adaptive Cards)
+- **Trip Normal Card**
+- **Interesting Trip Card**
+- **Suspicious Vendor Activity Card**
+![alt text](image-4.png)
+---
+
+## 🎥 Demo Video
+
+[▶️ Watch Demo on YouTube](https://your-video-link.com)
+
+---
+
+## ✍️ Author
+
+**Shaoxian Duan**  
+

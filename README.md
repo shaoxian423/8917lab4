@@ -21,7 +21,7 @@ Azure Logic App (orchestrates logic)
 Microsoft Teams (Adaptive Cards notifications)
 ```
 
-![Architecture Diagram](image.png)
+![Architecture Diagram](Screenshot/image.png)
 
 ---
 
@@ -58,7 +58,7 @@ The `analyze_trip` Azure Function processes incoming trip data and flags pattern
   }
 ]
 ```
-![alt text](image-3.png)
+![alt text](Screenshot/image-3.png)
 
 ---
 
@@ -71,10 +71,7 @@ The `analyze_trip` Azure Function processes incoming trip data and flags pattern
 
 ### 2. Azure Function: `analyze_trip`
 - Triggered via HTTP (used by Logic App)
-- Endpoint:  
-  ```
-  POST https://<your-function-app>.azurewebsites.net/api/
-  ```
+
 - Sample `curl`:
   ```bash
   curl -X POST -H "Content-Type: application/json" -d '[
@@ -94,17 +91,17 @@ The `analyze_trip` Azure Function processes incoming trip data and flags pattern
 - Calls `analyze_trip` Azure Function
 - Uses `For each` loop to handle responses
 - Posts appropriate Adaptive Cards to Teams
-![alt text](image-5.png)
+![alt text](Screenshot/image-5.png)
 ### 4. Microsoft Teams (Adaptive Cards)
 - **Trip Normal Card**
 - **Interesting Trip Card**
 - **Suspicious Vendor Activity Card**
-![alt text](image-4.png)
+![alt text](Screenshot/image-4.png)
 ---
 
 ## 🎥 Demo Video
 
-[▶️ Watch Demo on YouTube](https://your-video-link.com)
+[▶️ Watch Demo on YouTube](https://youtu.be/3bzDzAjrk8M)
 
 ---
 
